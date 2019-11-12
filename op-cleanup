@@ -1,0 +1,41 @@
+#!/usr/bin/env php
+
+<?php
+
+require 'vendor/autoload.php';
+
+$data = json_decode(shell_exec("op list items"), true);
+
+if (empty($data)) {
+	exit;
+}
+
+$urls = array_filter(array_map(function ($item) {
+	return array_map(function ($row) {
+		return $row['u'] ?? null;
+	}, $item['overview']['URLs'] ?? []);
+}, $data));
+
+foreach ($urls as $url) {
+	if (empty($url)) {
+		continue;
+	}
+
+	try {
+		echo "Checking URL {$url}... ";
+
+		(new GuzzleHttp\Client())->request('GET', $url, [
+			'timeout' => 20
+		]);
+
+		echo "OK.\n";
+	} catch (\Exception $e) {
+		echo " ! FAIL.\n";
+
+		$failed[] = $url;
+	}
+}
+
+echo "\n\n-- The following URLs seem inexistent. --\n\n";
+
+print_r($failed);
